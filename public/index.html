@@ -1,0 +1,149 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>Christmas list</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" href="/favicon-32x32.png" sizes="32x32">
+  <link rel="icon" type="image/png" href="/favicon-16x16.png" sizes="16x16">
+  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#5bbad5">
+  <meta name="theme-color" content="#33383a">
+  <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link href="https://fonts.googleapis.com/css?family=Montserrat" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Montserrat', sans-serif;
+    }
+
+    /* hover style just for information */
+    label:hover:before {
+      border: 1px solid #4778d9!important;
+    }
+    [type="checkbox"]:checked + label {
+      color:#888;
+      text-decoration: line-through;
+    }
+
+    </style>
+</head>
+
+<body>
+  <div id="app">
+    <h1 v-if="loading">Loading...</h1>
+    <person-list v-for="person in persons" v-bind:person="person" v-bind:editmode="editmode" v-on:personupdated="personupdated"></person-list>
+    <div style="position:fixed;bottom:10px;right:10px"><button v-on:click="editmode = !editmode">π</button></div>
+  </div>
+  <script src="app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/3.6.0/firebase.js"></script>
+  <script src="https://unpkg.com/vue/dist/vue.js"></script>
+  <script>
+
+  Vue.component('person-list', {
+    props: {
+        'person': Object,
+        'editmode': Boolean
+    },
+    template: '\
+    <div>\
+      <h1>{{person.name}}</h1>\
+      <gift-item v-for="item in person.gifts" v-bind:gift="item" v-bind:editmode="editmode" v-on:updated="updated" v-on:remove="remove"></gift-item>\
+      <input v-if="editmode" v-model="foo" v-on:keyup.enter="addNew">\
+    </div>',
+    data: function() {
+      console.log(this.editmode);
+      return {
+        foo: ''
+      }
+    },
+    methods: {
+      addNew: function() {
+        this.person.gifts.push({text:this.foo, bought:false});
+        this.foo = '';
+        this.$emit('personupdated', this.person);
+      },
+      remove: function(object) {
+        console.log("went uP!");
+        console.log(object);
+        this.person.gifts.splice(this.person.gifts.indexOf(object), 1);
+        this.$emit('personupdated', this.person);
+      },
+      updated: function(object) {
+        console.log(this.person);
+        this.$emit('personupdated', this.person);
+        console.log("went uP!");
+        console.log(object);
+        //this.person.gifts.splice(this.person.gifts.indexOf(object), 1);
+      }
+    }
+  });
+
+  Vue.component('gift-item', {
+    props: ['gift', 'editmode'],
+    template: '\
+      <div>\
+        <input type="checkbox" v-model="gift.bought"></input>\
+        <label class="gift-text">{{gift.text}}</label>\
+        <button v-if="editmode" v-on:click="remove">x</button>\
+      </div>',
+    watch: {
+      'gift.bought': function (val) {
+        this.$emit('updated', this.gift);
+      }
+    },
+    methods: {
+      remove: function(){
+        console.log("hello");
+        this.$emit('remove', this.gift);
+      }
+    }
+  });
+
+  var app = new Vue({
+    el: '#app',
+    data: {
+      loading: true,
+      editmode: false,
+      persons: []
+    },
+    created: function () {
+
+      // Initialize Firebase
+      var config = {
+        apiKey: "AIzaSyAZxoEjF_xy1fzjMxoQvhPCgmiVB6-OeC0",
+        authDomain: "xmas-list-10a77.firebaseapp.com",
+        databaseURL: "https://xmas-list-10a77.firebaseio.com",
+        storageBucket: "",
+        messagingSenderId: "151186841276"
+      };
+      firebase.initializeApp(config);
+      // Get a reference to the database service
+      var database = firebase.database();
+      var ref = database.ref('persons')
+      var vue = this;
+      console.log('loading data');
+      ref.on('value', function(snapshot) {
+        console.log('recieving data');
+        console.log(snapshot.val());
+        vue.persons = snapshot.val();
+        vue.loading = false;
+        //updateStarCount(postElement, snapshot.val());
+      });
+      //var ref = database.ref('users/1').set({name: 'hello'});
+      //ref.set(this.persons);
+      console.log(this.persons + '');
+    },
+    methods: {
+      personupdated: function(object) {
+        firebase.database().ref('persons/' + object.name).update(object);
+      }
+    }
+  })
+  </script>
+</body>
+</html>
